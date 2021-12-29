@@ -29,6 +29,8 @@ bot = commands.Bot(command_prefix="", description="Description", intents=intents
 # bot.OBJ to define global bot variables
 bot.set = False
 bot.list = list()
+bot.queue = list()
+bot.playing = False
 
 
 @bot.command()
@@ -69,17 +71,22 @@ async def music(ctx):
             print(bot.list)
         else:
             msg = ctx.message
-            await player(msg, url)
+            bot.queue.append(url)
+            await player(msg)
 
 
-async def player(msg, url):
-    vc = await msg.author.voice.channel.connect()
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-        URL = info["formats"][0]["url"]
-    vc.play(discord.FFmpegPCMAudio(URL))
-    while vc.is_playing():
-        await asyncio.sleep(1)
+async def player(msg):
+    bot.playing = True
+    for url in bot.queue:
+        vc = await msg.author.voice.channel.connect()
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            URL = info["formats"][0]["url"]
+        vc.play(discord.FFmpegPCMAudio(URL))
+        while vc.is_playing():
+            await asyncio.sleep(1)
+    bot.playing = False
+    bot.queue.clear()
     await vc.disconnect()
 
 
@@ -92,7 +99,10 @@ async def on_message(message):
             value = int(choice)
             if value in range(1, 6):
                 bot.set = False
-                await player(message, bot.list[value - 1])
+                bot.queue.append(bot.list[value - 1])
+                while bot.playing is True:
+                    await asyncio.sleep(1)
+                await player(message)
             else:
                 await message.channel.send("Pick a number between 1 and 5")
         except ValueError:
