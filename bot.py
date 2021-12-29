@@ -77,8 +77,8 @@ async def music(ctx):
 
 async def player(msg):
     bot.playing = True
+    vc = await msg.author.voice.channel.connect()
     for url in bot.queue:
-        vc = await msg.author.voice.channel.connect()
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             URL = info["formats"][0]["url"]
@@ -100,9 +100,8 @@ async def on_message(message):
             if value in range(1, 6):
                 bot.set = False
                 bot.queue.append(bot.list[value - 1])
-                while bot.playing is True:
-                    await asyncio.sleep(1)
-                await player(message)
+                if(bot.playing is False):
+                 await player(message)
             else:
                 await message.channel.send("Pick a number between 1 and 5")
         except ValueError:
@@ -116,10 +115,10 @@ async def stop(ctx):
         server = ctx.message.guild.voice_client
         bot.list.clear()
         bot.set = False
+        bot.queue.clear()
         await server.disconnect()
     except:
         print("Already disconnected")
-
 
 @bot.event
 async def on_ready():
